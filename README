@@ -1,0 +1,55 @@
+# DocMind — RAG Document Q&A System
+
+A Retrieval-Augmented Generation (RAG) system built from scratch. Ingests documents, chunks and embeds them with a custom TF-IDF vectorizer (no vector DB needed), retrieves relevant passages via cosine similarity, and generates grounded answers using GPT-4o-mini.
+
+## Features
+- **Custom TF-IDF vectorizer** — no sklearn, pure NumPy
+- **Overlapping text chunking** — sentence-boundary aware, configurable chunk size
+- **Cosine similarity search** — in-memory vector index
+- **Multi-turn conversation** — maintains context across follow-up questions
+- **Source attribution** — every answer cites which document it came from
+- **Retrieved chunk inspection** — see exactly which passages informed the answer
+- **Works demo-mode** without API key (shows retrieved context)
+
+## Setup
+
+```bash
+pip install flask flask-cors numpy
+export OPENAI_API_KEY=sk-...      # optional — app works without it
+python app.py                      # starts API on :5051
+open dashboard.html                # open in browser
+```
+
+## Architecture
+
+```
+User Query
+    │
+    ▼
+[TF-IDF Embed Query]
+    │
+    ▼
+[Cosine Similarity Search] → Top-K chunks
+    │
+    ▼
+[Build Prompt: system + context + query]
+    │
+    ▼
+[GPT-4o-mini] → Grounded Answer + Source Citations
+```
+
+## API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/ingest` | `{"text": "...", "filename": "notes.txt"}` |
+| POST | `/api/query`  | `{"question": "...", "top_k": 4}` |
+| GET  | `/api/stats`  | Chunk count, vocab size, history turns |
+| POST | `/api/reset`  | Clear conversation history |
+| DELETE | `/api/documents` | Clear all indexed documents |
+
+## Key Design Decisions
+- **No external vector DB** (Pinecone, Weaviate etc.) — pure NumPy for portability
+- **Re-fits vectorizer** on each new document for incremental indexing
+- **Overlap chunking** ensures context isn't lost at chunk boundaries
+- **Prompt grounding** — system prompt instructs model to cite only provided context
